@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "restaurants": {
+      "title": "Restaurants",
+      "description": "Restaurant details, branding, and config",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "orders": {
+      "title": "Orders",
+      "description": "Customer food orders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "restaurantId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "restaurantId", "totalAmount"]
+    },
+    "reservations": {
+      "title": "Reservations",
+      "description": "Table bookings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "restaurantId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "date": { "type": "string text" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "restaurantId"]
+    }
+  }
+}

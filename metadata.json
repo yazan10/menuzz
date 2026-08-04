@@ -1,0 +1,6 @@
+{
+  "name": "menuz - المنصة الرقمية لمنيو المطاعم",
+  "description": "منصة menuz المتكاملة لإنشاء المنيو الرقمي QR Code وإدارة الطلبات، الحجوزات، الدفع الإلكتروني والتقارير.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

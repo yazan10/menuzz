@@ -1,0 +1,250 @@
+// Prisma Schema for menuz Digital Restaurant & Menu Platform
+// Database Provider: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Roles
+enum Role {
+  ADMIN
+  RESTAURANT_OWNER
+  CUSTOMER
+}
+
+// Order Processing Statuses
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERING
+  COMPLETED
+  CANCELLED
+}
+
+// Payment Methods & Statuses
+enum PaymentMethod {
+  CASH
+  CARD
+  ONLINE
+  MADA
+  APPLE_PAY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// User Accounts & Authentication Model
+model User {
+  id            String       @id @default(uuid())
+  name          String
+  email         String       @unique
+  password      String       // Hashed with Bcrypt/Argon2
+  role          Role         @default(CUSTOMER)
+  phone         String?
+  avatarUrl     String?
+  isActive      Boolean      @default(true)
+  isEmailVerified Boolean    @default(false)
+  resetToken    String?
+  resetTokenExp DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  ownedRestaurants Restaurant[] @relation("RestaurantOwner")
+  orders           Order[]
+  reviews          Review[]
+  favorites        Favorite[]
+
+  @@index([email])
+  @@index([role])
+}
+
+// Restaurant Profile & Configuration Model
+model Restaurant {
+  id             String     @id @default(uuid())
+  name           String
+  description    String?    @db.Text
+  address        String?
+  phone          String?
+  logoUrl        String?
+  coverUrl       String?
+  ownerId        String
+  owner          User       @relation("RestaurantOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  isActive       Boolean    @default(true)
+  isFeatured     Boolean    @default(false)
+  openingTime    String?    // e.g., "08:00"
+  closingTime    String?    // e.g., "23:00"
+  currency       String     @default("SAR")
+  taxRate        Decimal    @default(0.15) @db.Decimal(5, 2)
+  deliveryFee    Decimal    @default(0.00) @db.Decimal(10, 2)
+  minOrderAmount Decimal    @default(0.00) @db.Decimal(10, 2)
+  rating         Decimal    @default(5.00) @db.Decimal(3, 2)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Relations
+  categories  Category[]
+  products    Product[]
+  orders      Order[]
+  reviews     Review[]
+  favorites   Favorite[]
+
+  @@index([ownerId])
+  @@index([isActive])
+}
+
+// Menu Categories Model
+model Category {
+  id           String     @id @default(uuid())
+  name         String
+  description  String?    @db.Text
+  imageUrl     String?
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  sortOrder    Int        @default(0)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relations
+  products     Product[]
+
+  @@index([restaurantId])
+  @@index([isActive])
+}
+
+// Menu Products & Dishes Model
+model Product {
+  id              String         @id @default(uuid())
+  name            String
+  description     String?        @db.Text
+  price           Decimal        @db.Decimal(10, 2)
+  discountPrice   Decimal?       @db.Decimal(10, 2)
+  imageUrl        String?
+  categoryId      String
+  category        Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  restaurantId    String
+  restaurant      Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  isAvailable     Boolean        @default(true)
+  isFeatured      Boolean        @default(false)
+  calories        Int?
+  preparationTime Int            @default(15) // Minutes
+  sortOrder       Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  addons          ProductAddon[]
+  orderItems      OrderItem[]
+
+  @@index([restaurantId])
+  @@index([categoryId])
+  @@index([isAvailable])
+}
+
+// Optional Product Addons (Options & Extras)
+model ProductAddon {
+  id         String   @id @default(uuid())
+  name       String
+  price      Decimal  @db.Decimal(10, 2)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  isRequired Boolean  @default(false)
+  maxSelect  Int      @default(1)
+  sortOrder  Int      @default(0)
+
+  @@index([productId])
+}
+
+// Orders Management Model
+model Order {
+  id                  String        @id @default(uuid())
+  orderNumber         String        @unique // e.g. "ORD-10024"
+  userId              String?
+  user                User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  restaurantId        String
+  restaurant          Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  status              OrderStatus   @default(PENDING)
+  totalPrice          Decimal       @db.Decimal(10, 2)
+  subtotal            Decimal       @db.Decimal(10, 2)
+  tax                 Decimal       @default(0.00) @db.Decimal(10, 2)
+  deliveryFee         Decimal       @default(0.00) @db.Decimal(10, 2)
+  discount            Decimal       @default(0.00) @db.Decimal(10, 2)
+  tableNumber         String?
+  deliveryAddress     String?       @db.Text
+  customerName        String
+  customerPhone       String
+  specialInstructions String?       @db.Text
+  paymentMethod       PaymentMethod @default(CASH)
+  paymentStatus       PaymentStatus @default(PENDING)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  items               OrderItem[]
+  review              Review?
+
+  @@index([userId])
+  @@index([restaurantId])
+  @@index([status])
+  @@index([orderNumber])
+}
+
+// Order Items Junction Table
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName  String
+  quantity     Int
+  unitPrice    Decimal  @db.Decimal(10, 2)
+  totalPrice   Decimal  @db.Decimal(10, 2)
+  addonDetails Json?    // JSON array of selected options/addons
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+// Restaurant Customer Reviews Model
+model Review {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orderId      String?    @unique
+  order        Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  rating       Int        // 1 to 5
+  comment      String?    @db.Text
+  createdAt    DateTime   @default(now())
+
+  @@index([userId])
+  @@index([restaurantId])
+}
+
+// User Favorite Restaurants
+model Favorite {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([userId, restaurantId])
+  @@index([userId])
+  @@index([restaurantId])
+}
